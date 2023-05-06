@@ -1,9 +1,10 @@
 ---
-title: "Minneapolis Saint Paul"
+title: "Analysis of the Effect of Banning Single-Family Zoning Laws on Housing Prices in Minneapolis"
 author: "Andrew Bradbury"
 date: "2023-03-04"
 output:
   html_document: default
+  word_document: default
   pdf_document: default
 ---
 
@@ -11,11 +12,36 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Data
-## The data used in this analysis is sourced from a dataset that includes information on all real estate transactions that took place in the Twin Cities metro area from 2016-2021. The data was originally sourced from the Minnesota Department of Revenue and cleaned by the author.
+### Data
+#### The data used in this analysis is sourced from a dataset that includes information on all real estate transactions that took place in the Twin Cities metro area from 2016-2021. The data was originally sourced from the Minnesota Department of Revenue and cleaned by the author.
+
+### Introduction
+#### Single-family zoning laws have long been a contentious issue in urban planning. Supporters argue that they help maintain property values and prevent overcrowding, while opponents argue that they exacerbate inequality and limit the availability of affordable housing. In recent years, a number of cities have taken steps to ban or reform these laws in an effort to promote more inclusive and equitable development. This document presents an analysis of the effect of banning single-family zoning laws on housing prices in Minneapolis, a city that recently passed such a ban.
+
+### Methodology
+##### To estimate the effect of the policy intervention on housing prices, we use the Difference in Difference (DID) model. The DID model is a statistical technique that compares the changes in an outcome variable for a treatment group and a control group before and after a policy intervention. In this case, the treatment group consists of observations in Minneapolis during the treatment period (2019-2021), while the control group consists of observations in neighboring Saint Paul. We chose the DID model because it allows us to control for pre-existing differences in housing prices between the two cities and isolate the effect of the policy intervention.
+
+#### To implement the DID model, we first estimate the following regression model:
+#### Price = β0 + β1 * Treated + β2 * Minneapolis + β3 * Q2 + β4 * Q3 + β5 * Q4 + ε
+#### where Price is the sale price of a property, Treated is a binary variable equal to 1 for observations in Minneapolis during the treatment period, Minneapolis is a binary variable equal to 1 for observations in Minneapolis at all times, and Q2, Q3, and Q4 are dummy variables for the second, third, and fourth quarters of each year. We use fixed effects for state and quarter to control for any differences in housing prices across states or time periods.
+
+### Results
+#### The first regression model estimates the effect of the policy intervention on housing prices. The variable Treated is a binary variable that equals 1 for observations in Minneapolis during the treatment period (2019-2021). The estimated coefficient for Treated is -33,272.149, which is statistically significant at the 0.01 level (***), indicating that the policy intervention had a negative effect on housing prices in Minneapolis. The R-squared value of 0.799 suggests that the model explains a significant portion of the variation in housing prices, and the fixed effects for state and quarter control for any differences in housing prices across states or time periods.
+
+### Placebo Tests
+#### The second part of the analysis includes placebo tests to check the validity of the DID model. Placebo tests involve applying the same model to periods before the treatment, where no policy intervention took place. In this case, the placebo tests involve two fake treatments in the two quarters leading up to the policy change. The first placebo test (FakeTreat1) represents the interaction between Q2 2018 and Q3 2018, which passed the placebo test with a statistically significant effect at the 0.05 level (**), indicating that the model is correctly specified. The second placebo test (FakeTreat2) represents only Q3 2018, which resulted in an insignificant effect, confirming that the model is correctly specified.
+
+### Conclusion
+#### Overall, the results suggest that the banning of single-family zoning laws in Minneapolis had a negative effect on housing prices in the city. The placebo tests confirm that the DID model is correctly specified and that the estimated effect is not due to other factors or trends. However, it’s essential to consider the limitations of the model, such as potential omitted variable bias, measurement error, or unobserved heterogeneity, which may affect the accuracy of the results.
+
+### References
+#### Data used for this analysis was obtained from the Minnesota Department of Revenue and can be found in Lazarus and S.T. (2022). The data set includes real estate transaction data from 2015-2021, and was used to estimate the effect of the policy intervention on housing prices in Minneapolis using a Difference in Difference (DID) model. The reference for the data set is:
+#### W Lazarus, S.T., 2022. Minnesota Department of Revenue real estate transaction data. [Online] Available at: https://doi.org/10.7910/DVN/IO28LF
+
+
 
 ```{r}
-setwd('/Users/andrewscpu/Documents/GitHub/Titian4Win.github.io')
+setwd('/Users/andrewscpu/Documents/GitHub/Minneapolis')
 #install packages
 #install.packages("dplyr")
 #install.packages("readr")
@@ -63,7 +89,7 @@ library(data.table)
 ###### Filter & Name Cities
 ```{r}
 # Load data
-minneapolis_saint_paul <- fread("/Users/andrewscpu/Documents/GitHub/Titian4Win.github.io/Minneapolis_Saint_Paul.csv")
+minneapolis_saint_paul <- fread("/Users/andrewscpu/Documents/GitHub/Minneapolis/Minneapolis_Saint_Paul.csv")
 # Filter & rename cities
 saint_paul <- minneapolis_saint_paul %>% 
   filter(cty_twnshp_nme == "St. Paul") %>% 
@@ -102,21 +128,20 @@ minneapolis_agg <- minneapolis %>%
 ###### Create quarterly aggregate means
 ```{r}
 # Create quarterly aggregate means
-aggregated_data_M <- aggregate(tot_purch_amt ~ dates, data = Minneapolis, FUN = mean)
-aggregated_data_SP <- aggregate(tot_purch_amt ~ dates, data = Saint_Paul, FUN = mean)
-aggregated_data_SPM <- aggregate(tot_purch_amt ~ dates, data = Minneapolis_Saint_Paul, FUN = mean)
+#aggregated_data_M <- aggregate(tot_purch_amt ~ dates, data = Minneapolis, FUN = mean)
+##aggregated_data_SPM <- aggregate(tot_purch_amt ~ dates, data = Minneapolis_Saint_Paul, FUN = mean)
 ```
 ## Graph of Minneapolis
 ```{r}
 # Rename columns
-colnames(aggregated_data_M) <- c("dates", "M")
-colnames(aggregated_data_SP) <- c("dates", "SP")
+colnames(minneapolis_agg) <- c("dates", "M")
+colnames(saint_paul_agg) <- c("dates", "SP")
 
 # Merge data frames
-MSP <- merge(aggregated_data_M, aggregated_data_SP, by = "dates")
+MSP <- merge(minneapolis_agg, saint_paul_agg, by = "dates")
 
 # Create plot
-p <- ggplot(aggregated_data_M, aes(x = dates, y = M)) + 
+p <- ggplot(minneapolis_agg, aes(x = dates, y = M)) + 
   geom_point(color = "black") +
   geom_line(color = "red", linetype = "dashed") +
   labs(title = "Minneapolis", x = "Year", y = "Mean Transaction Price (in millions)") +
@@ -131,7 +156,7 @@ plot(p)
 ###### Graph of Saint Paul
 ```{r}
 # Create plot
-p <- ggplot(aggregated_data_SP, aes(x = dates, y = SP)) + 
+p <- ggplot(saint_paul_agg, aes(x = dates, y = SP)) + 
   geom_point(color = "black") +
   geom_line(color = "blue", linetype = "dashed") +
   labs(title = "Saint Paul", x = "Year", y = "Mean Transaction Price (in millions)") +
@@ -146,13 +171,13 @@ plot(p)
 ###### Summary Statistics
 ```{r}
 # Display summary statistics
-skimr::skim(aggregated_data_M)
-skimr::skim(aggregated_data_SP)
+skimr::skim(minneapolis_agg)
+skimr::skim(saint_paul_agg)
 ```
 ###### New file with converted dates, not shown
 ```{r}
 # Read data from file
-Book1 <- fread("/Users/andrewscpu/Documents/GitHub/Titian4Win.github.io/Book1.csv")
+Book1 <- fread("/Users/andrewscpu/Documents/GitHub/Minneapolis/Book1.csv")
 ```
 ###### Treatment period from 2019-2021 (Period after announcement)
 ```{r}
@@ -166,6 +191,8 @@ Book1 <- Book1 %>%
 ```{r}
 clfe <- feols(tot_purch_amt ~ Treated | cty_twnshp_name + quarter, data = Book1)
 msummary(clfe, stars = c('*' = .1, '**' = .05, '***' = .01))
+# use coefplot() for a graph of effects 
+coefplot(clfe)
 ```
 ###### Use only Pretreatment data (before announcement) (placebo tests)
 ###### Shows the placebo tests that happen in the two quarters leading up to the policy change. 
@@ -185,3 +212,6 @@ clfel2 <- feols(tot_purch_amt ~ FakeTreat2,
                data = Book1)
 msummary(list(clfel1, clfel2), stars = c('*' = .1, '**' = .05, '***' =.01))
 ```
+
+
+
